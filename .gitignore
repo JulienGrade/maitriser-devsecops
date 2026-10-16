@@ -1,0 +1,10 @@
+.env
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfplan
+*.pem
+*.key
+vault-data/
+target/
+node_modules/

@@ -1,0 +1,47 @@
+stages:
+  - validate
+  - security
+  - plan
+  - apply
+
+default:
+  image: hashicorp/terraform:1.14
+
+validate:
+  stage: validate
+  script:
+    - terraform fmt -check -recursive
+    - terraform init -backend=false
+    - terraform validate
+
+misconfiguration:
+  stage: security
+  image:
+    name: aquasec/trivy:0.74.0
+    entrypoint: [""]
+  script:
+    - trivy config --severity HIGH,CRITICAL --exit-code 1 .
+
+plan:
+  stage: plan
+  script:
+    - terraform init
+    - terraform plan -out=tfplan
+  artifacts:
+    paths:
+      - tfplan
+    expire_in: 1 day
+
+apply:
+  stage: apply
+  needs:
+    - job: plan
+      artifacts: true
+  script:
+    - terraform init
+    - terraform apply -auto-approve tfplan
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+  environment:
+    name: production

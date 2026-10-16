@@ -1,0 +1,42 @@
+pipeline {
+  agent { label 'terraform' }
+
+  options {
+    disableConcurrentBuilds()
+    timestamps()
+  }
+
+  stages {
+    stage('Validate') {
+      steps {
+        sh 'terraform fmt -check -recursive'
+        sh 'terraform init -backend=false'
+        sh 'terraform validate'
+      }
+    }
+
+    stage('Plan') {
+      steps {
+        sh 'terraform init'
+        sh 'terraform plan -out=tfplan'
+        archiveArtifacts artifacts: 'tfplan', fingerprint: true
+      }
+    }
+
+    stage('Approval') {
+      steps {
+        input message: 'Appliquer le plan validé ?'
+      }
+    }
+
+    stage('Apply') {
+      steps {
+        sh 'terraform apply -auto-approve tfplan'
+      }
+    }
+  }
+
+  post {
+    always { deleteDir() }
+  }
+}

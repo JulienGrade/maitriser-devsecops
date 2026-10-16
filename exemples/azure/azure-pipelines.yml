@@ -1,0 +1,42 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: Build
+    jobs:
+      - job: Maven
+        steps:
+          - checkout: self
+            fetchDepth: 0
+          - task: JavaToolInstaller@0
+            inputs:
+              versionSpec: '21'
+              jdkArchitectureOption: x64
+              jdkSourceOption: PreInstalled
+          - script: mvn --batch-mode verify
+            displayName: Compiler et tester
+          - task: PublishTestResults@2
+            condition: always()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: '**/surefire-reports/TEST-*.xml'
+          - publish: target
+            artifact: application
+
+  - stage: Security
+    dependsOn: Build
+    jobs:
+      - job: DependencyAudit
+        steps:
+          - script: mvn --batch-mode org.owasp:dependency-check-maven:check
+            displayName: Analyser les dépendances
